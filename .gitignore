@@ -1,0 +1,12 @@
+.DS_Store
+be.db
+app.log
+.coverage
+.idea
+__pycache__
+*.pyc
+
+fe/data/*
+
+!fe/data/scraper.py
+!fe/data/book.db
