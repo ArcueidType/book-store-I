@@ -1,54 +1,55 @@
 import logging
 import os
-import sqlite3 as sqlite
+import pymongo
 import threading
+from pymongo.database import Database
+from pymongo.errors import PyMongoError
 
 
 class Store:
     database: str
 
     def __init__(self, db_path):
-        self.database = os.path.join(db_path, "be.db")
-        self.init_tables()
+        self.database = db_path
+        self.init_indexes()
 
-    def init_tables(self):
+    def init_indexes(self):
         try:
-            conn = self.get_db_conn()
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS user ("
-                "user_id TEXT PRIMARY KEY, password TEXT NOT NULL, "
-                "balance INTEGER NOT NULL, token TEXT, terminal TEXT);"
-            )
+            db = self.get_db_conn()
+            new_order_col = db['new_order']
+            new_order_detail_col = db['new_order_detail']
+            store_col = db['store']
+            user_col = db['user']
+            user_store_col = db['user_store']
 
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS user_store("
-                "user_id TEXT, store_id, PRIMARY KEY(user_id, store_id));"
-            )
+            new_order_ii = new_order_col.index_information()
+            if 'new_order_index' not in new_order_ii.keys():
+                new_order_col.create_index([('order_id', 1)], unique=True, name='new_order_index')
 
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS store( "
-                "store_id TEXT, book_id TEXT, book_info TEXT, stock_level INTEGER,"
-                " PRIMARY KEY(store_id, book_id))"
-            )
+            new_order_detail_ii = new_order_detail_col.index_information()
+            if 'new_order_detail_index' not in new_order_detail_ii.keys():
+                new_order_detail_col.create_index([('order_id', 1), ('book_id', 1)], unique=True,
+                                                  name='new_order_detail_index')
 
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS new_order( "
-                "order_id TEXT PRIMARY KEY, user_id TEXT, store_id TEXT)"
-            )
+            store_ii = store_col.index_information()
+            if 'store_index' not in store_ii.keys():
+                store_col.create_index([('store_id', 1), ('book_id', 1)], unique=True, name='store_index')
 
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS new_order_detail( "
-                "order_id TEXT, book_id TEXT, count INTEGER, price INTEGER,  "
-                "PRIMARY KEY(order_id, book_id))"
-            )
+            user_ii = user_col.index_information()
+            if 'user_index' not in user_ii.keys():
+                user_col.create_index([('user_id', 1)], unique=True, name='user_index')
 
-            conn.commit()
-        except sqlite.Error as e:
+            user_store_ii = user_store_col.index_information()
+            if 'user_store_index' not in user_store_ii.keys():
+                user_store_col.create_index([('store_id', 1)], unique=True, name='user_store_index')
+
+        except PyMongoError as e:
             logging.error(e)
-            conn.rollback()
 
-    def get_db_conn(self) -> sqlite.Connection:
-        return sqlite.connect(self.database)
+    def get_db_conn(self) -> Database:
+        client = pymongo.MongoClient(self.database)
+        db = client['book_store']
+        return db
 
 
 database_instance: Store = None

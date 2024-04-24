@@ -3,38 +3,33 @@ from be.model import store
 
 class DBConn:
     def __init__(self):
-        self.conn = store.get_db_conn()
+        self.db = store.get_db_conn()
 
     def user_id_exist(self, user_id):
-        cursor = self.conn.execute(
-            "SELECT user_id FROM user WHERE user_id = ?;", (user_id,)
-        )
-        row = cursor.fetchone()
-        if row is None:
-            return False
-        else:
+        user_col = self.db['user']
+        row = user_col.find({'user_id': user_id}, {'_id': 0, 'user_id': 1})
+
+        if list(row):
             return True
+        else:
+            return False
 
     def book_id_exist(self, store_id, book_id):
-        cursor = self.conn.execute(
-            "SELECT book_id FROM store WHERE store_id = ? AND book_id = ?;",
-            (store_id, book_id),
-        )
-        row = cursor.fetchone()
-        if row is None:
-            return False
-        else:
+        store_col = self.db['store']
+        row = store_col.find({'$and': [{'store_id': store_id}, {'book_id': book_id}]}, {'_id': 0, 'book_id': 1})
+
+        if list(row):
             return True
+        else:
+            return False
 
     def store_id_exist(self, store_id):
-        cursor = self.conn.execute(
-            "SELECT store_id FROM user_store WHERE store_id = ?;", (store_id,)
-        )
-        row = cursor.fetchone()
-        if row is None:
-            return False
-        else:
+        user_store_col = self.db['user_store']
+        row = user_store_col.find({'store_id': store_id}, {'_id': 0, 'store_id': 1})
+        if list(row):
             return True
+        else:
+            return False
 
     def order_id_exist(self, order_id):
         cursor = self.db['new_order'].find({'order_id': order_id}, {'_id': 0})
