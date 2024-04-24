@@ -6,7 +6,8 @@ from be.model import db_conn
 from be.model import error
 from datetime import datetime
 
-
+unpaid_orders = {}
+time_limit = 20
 class Buyer(db_conn.DBConn):
     def __init__(self):
         db_conn.DBConn.__init__(self)
@@ -58,6 +59,7 @@ class Buyer(db_conn.DBConn):
             new_order_col.insert_one({'order_id': order_id, 'store_id': store_id, 'user_id': user_id,
                                       'status': 1, 'total_price': total_price,
                                       'order_time': int(datetime.now().timestamp())})
+            unpaid_orders[order_id] = int(datetime.now().timestamp())
 
         except PyMongoError as e:
             logging.info("528, {}".format(str(e)))
@@ -91,7 +93,29 @@ class Buyer(db_conn.DBConn):
 
             if buyer_id != user_id:
                 return error.error_authorization_fail()
+            
+            cur_time = int(datetime.now().timestamp())
+            time_diff = cur_time - unpaid_orders[order_id]
+            if time_diff > time_limit:
+                try:
+                    unpaid_orders.pop(order_id)
+                    result = self.db['new_order_detail'].find({'order_id':order_id},{'_id':0, 'book_id':1, 'count':1})
+                    if result.count() == 0:
+                        return error.error_invalid_order_id(order_id)
+                    for row in result:
+                        book_id = row['book_id']
+                        count = row['count']
+                        self.db['store'].update_one({'store_id':store_id, 'book_id':book_id},{'$inc':{'stock_level':count}})
 
+                    self.db['new_order'].delete_one({'order_id':order_id})
+
+                    self.db['new_order_detail'].delete_one({'order_id':order_id})
+                except PyMongoError as e:
+                    return 529, "{}".format(str(e))
+                except BaseException as e:
+                    return 530, "{}".format(str(e))
+                return error.error_order_timelimit_exceeded(order_id)
+            
             duration = int(datetime.now().timestamp()) - order_time
             if duration > self.time_limit:
                 return error.error_order_timelimit_exceeded(order_id)
@@ -136,6 +160,7 @@ class Buyer(db_conn.DBConn):
             if cursor.modified_count == 0:
                 return error.error_invalid_order_id(order_id)
 
+
         except PyMongoError as e:
             return 528, "{}".format(str(e))
 
@@ -168,3 +193,55 @@ class Buyer(db_conn.DBConn):
             return 530, "{}".format(str(e))
 
         return 200, "ok"
+
+    def manual_cancel_orders(self, order_id, user_id):
+        try:
+            if not self.user_id_exist(user_id):
+                return error.error_non_exist_user_id(user_id)
+            if not self.order_id_exist(order_id):  
+                return error.error_invalid_order_id(order_id)
+            
+            row = self.db['new_order'].find({'order_id':order_id},{'_id':0})
+            if row.count() == 0:
+                return error.error_invalid_order_id(order_id)
+            order_id = row['order_id']
+            buyer_id = row['user_id']
+            store_id = row['store_id']
+            total_price = row['total_price']
+            status = row['status']
+            order_time = row['order_time']
+            if buyer_id != user_id:
+                return error.error_authorization_fail
+            if status != 2:
+                return error.error_invalid_order_status(order_id)
+            
+            result = self.db['user_store'].find({'store_id':store_id},{'_id':0})
+            if result.count() == 0:
+                return error.error_non_exist_store_id(store_id) 
+            seller_id = result['user_id']
+            if not self.user_id_exist(seller_id):
+                return error.error_non_exist_user_id(seller_id)
+            
+            self.db['users'].update_one({'user_id':user_id},{'$inc':{"balance":total_price}})
+            
+            self.db['users'].update_one({'user_id':seller_id},{'$inc':{"balance":-total_price}})
+            
+            self.db['history_order'].insert_one({'order_id':order_id, 'user_id':user_id, 'store_id':store_id, 'status':0, 'total_price':total_price, 'order_time':order_time})
+
+            result = self.db['new_order_detail'].find({'order_id':order_id},{'_id':0, 'book_id':1, 'count':1})
+            if result.count() == 0:
+                return error.error_invalid_order_id(order_id)
+            for row in result:
+                book_id = row['book_id']
+                count = row['count']
+                self.db['store'].update_one({'store_id':store_id, 'book_id':book_id},{'$inc':{'stock_level':count}})
+
+            self.db['new_order'].delete_one({'order_id':order_id})
+
+            self.db['new_order_detail'].delete_one({'order_id':order_id})
+
+        except PyMongoError as e:
+            return 529, "{}".format(str(e)), []
+        except BaseException as e:
+            return 530, "{}".format(str(e)), []
+        return 200, "ok", result
