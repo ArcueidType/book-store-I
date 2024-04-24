@@ -35,3 +35,10 @@ class DBConn:
             return False
         else:
             return True
+
+    def order_id_exist(self, order_id):
+        cursor = self.db['new_order'].find({'order_id': order_id}, {'_id': 0})
+        if not cursor.count():
+            return False
+        else:
+            return True

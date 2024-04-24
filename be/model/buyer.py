@@ -2,6 +2,8 @@ import sqlite3 as sqlite
 import uuid
 import json
 import logging
+import pymongo
+from pymongo.errors import PyMongoError
 from be.model import db_conn
 from be.model import error
 
@@ -139,18 +141,6 @@ class Buyer(db_conn.DBConn):
             if cursor.rowcount == 0:
                 return error.error_non_exist_user_id(seller_id)
 
-            cursor = conn.execute(
-                "DELETE FROM new_order WHERE order_id = ?", (order_id,)
-            )
-            if cursor.rowcount == 0:
-                return error.error_invalid_order_id(order_id)
-
-            cursor = conn.execute(
-                "DELETE FROM new_order_detail where order_id = ?", (order_id,)
-            )
-            if cursor.rowcount == 0:
-                return error.error_invalid_order_id(order_id)
-
             conn.commit()
 
         except sqlite.Error as e:
@@ -187,3 +177,46 @@ class Buyer(db_conn.DBConn):
             return 530, "{}".format(str(e))
 
         return 200, "ok"
+
+    def confirm_delivery(self, order_id: str, user_id: str) -> (int, str):
+        try:
+            if not self.user_id_exist(user_id):
+                return error.error_non_exist_user_id(user_id)
+            if not self.order_id_exist(order_id):
+                return error.error_invalid_order_id(order_id)
+
+            delivery = self.db['new_order'].find({'order_id': order_id}, {'_id': 0})
+            order_id = delivery['order_id']
+            buyer_id = delivery['user_id']
+            status = delivery['status']
+            store_id = delivery['store_id']
+            total_price = delivery['total_price']
+            order_time = delivery['order_time']
+
+            if buyer_id != user_id:
+                return error.error_authorization_fail()
+            if status != 3:
+                return error.error_invalid_order_status(order_id)
+            seller = self.db['user_store'].find({'store_id': store_id}, {'_id': 0})
+            if not seller.count():
+                return error.error_non_exist_store_id(store_id)
+            seller_id = seller['user_id']
+            if not self.user_id_exist(seller_id):
+                return error.error_non_exist_user_id(seller_id)
+
+            self.db['history_order'].insert_one({
+                'order_id': order_id,
+                'user_id': user_id,
+                'store_id': store_id,
+                'status': 4,
+                'total_price': total_price,
+                'order_time': order_time
+            })
+            self.db['new_order'].delete_one({'order_id': order_id})
+            self.db['new_order_detail'].delete_one({'order_id': order_id})
+
+        except PyMongoError as e:
+            return 529, "{}".format(str(e)), []
+        except BaseException as e:
+            return 530, "{}".format(str(e)), []
+        return 200, "delivery confirmed"
