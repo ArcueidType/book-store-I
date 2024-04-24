@@ -1,6 +1,5 @@
 from pymongo.errors import PyMongoError
 import uuid
-import json
 import logging
 from be.model import db_conn
 from be.model import error
@@ -189,7 +188,7 @@ class Buyer(db_conn.DBConn):
             if status != 3:
                 return error.error_invalid_order_status(order_id)
             seller = self.db['user_store'].find({'store_id': store_id}, {'_id': 0})
-            if not seller.count():
+            if not list(seller):
                 return error.error_non_exist_store_id(store_id)
             seller_id = seller['user_id']
             if not self.user_id_exist(seller_id):
@@ -208,7 +207,7 @@ class Buyer(db_conn.DBConn):
             self.db['new_order_detail'].delete_one({'order_id': order_id})
 
         except PyMongoError as e:
-            return 529, "{}".format(str(e)), []
+            return 529, "{}".format(str(e))
         except BaseException as e:
-            return 530, "{}".format(str(e)), []
+            return 530, "{}".format(str(e))
         return 200, "delivery confirmed"

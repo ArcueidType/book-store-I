@@ -1,10 +1,8 @@
 import json
-
-from pymongo.errors import PyMongoError
 from be.model import error
 from be.model import db_conn
-import pymongo
 from pymongo.errors import PyMongoError
+
 
 class Seller(db_conn.DBConn):
     def __init__(self):
