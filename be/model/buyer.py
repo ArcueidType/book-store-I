@@ -60,8 +60,14 @@ class Buyer(db_conn.DBConn):
             new_order_col.insert_one({'order_id':  order_id, 'store_id':  store_id, 'user_id':  user_id,
                                       'status':  1, 'total_price':  total_price,
                                       'order_time':  int(datetime.now().timestamp())})
+            
             unpaid_orders[order_id] = int(datetime.now().timestamp())
 
+            history_order_col = self.db['history_order']
+            history_order_col.insert_one({'order_id': order_id, 'user_id': user_id, 'store_id': store_id,
+                                          'status': 1, 'total_price': total_price,
+                                          'order_time': int(datetime.now().timestamp())})
+            
         except PyMongoError as e:
             logging.info("528, {}".format(str(e)))
             return 528, "{}".format(str(e)), ""
@@ -109,6 +115,9 @@ class Buyer(db_conn.DBConn):
                         self.db['store'].update_one({'store_id': store_id,
                                                      'book_id': book_id},
                                                     {'$inc': {'stock_level': count}})
+                    cursor = self.db['history_order'].update_one({'order_id': order_id}, {'$set': {'status': 0}})
+                    if cursor.modified_count == 0:
+                        return error.error_invalid_order_id(order_id)
 
                     self.db['new_order'].delete_one({'order_id': order_id})
 
@@ -158,6 +167,13 @@ class Buyer(db_conn.DBConn):
 
             if cursor.modified_count == 0:
                 return error.error_invalid_order_id(order_id)
+            
+            history_order_col = self.db['history_order']
+            cursor = history_order_col.update_one({'order_id': order_id}, {'$set': {'status': 2}})
+
+            if cursor.modified_count == 0:
+                return error.error_invalid_order_id(order_id)
+            
 
         except PyMongoError as e:
             return 528, "{}".format(str(e))
@@ -278,14 +294,10 @@ class Buyer(db_conn.DBConn):
                 return error.error_non_exist_user_id(seller_id)
 
             self.db['user'].update_one({'user id':  seller_id}, {'$inc':  {'balance':  total_price}})
-            self.db['history_order'].insert_one({
-                'order_id':  order_id,
-                'user_id':  user_id,
-                'store_id':  store_id,
-                'status':  4,
-                'total_price':  total_price,
-                'order_time':  order_time
-            })
+            cursor = self.db['history_order'].update_one({'order_id': order_id}, {'$set': {'status': 4}})
+            if cursor.modified_count == 0:
+                return error.error_invalid_order_id(order_id)
+            
             self.db['new_order'].delete_one({'order_id':  order_id})
             self.db['new_order_detail'].delete_one({'order_id':  order_id})
 

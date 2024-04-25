@@ -81,6 +81,9 @@ class Seller(db_conn.DBConn):
                 return error.error_non_exist_book_id(book_id)
 
             self.db['new_order'].update_one({'order_id': order_id}, {'$set': {'status': 3}})
+            cursor = self.db['history_order'].update_one({'order_id': order_id}, {'$set': {'status': 3}})
+            if cursor.modified_count == 0:
+                return error.error_invalid_order_id(order_id)
 
         except PyMongoError as e:
             return 529, "{}".format(str(e))
