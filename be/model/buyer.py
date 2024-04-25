@@ -56,17 +56,16 @@ class Buyer(db_conn.DBConn):
 
                 total_price += price * count
 
+            unpaid_orders[order_id] = int(datetime.now().timestamp())
             new_order_col = self.db['new_order']
             new_order_col.insert_one({'order_id':  order_id, 'store_id':  store_id, 'user_id':  user_id,
                                       'status':  1, 'total_price':  total_price,
-                                      'order_time':  int(datetime.now().timestamp())})
+                                      'order_time': unpaid_orders[order_id]})
             
-            unpaid_orders[order_id] = int(datetime.now().timestamp())
-
             history_order_col = self.db['history_order']
             history_order_col.insert_one({'order_id': order_id, 'user_id': user_id, 'store_id': store_id,
                                           'status': 1, 'total_price': total_price,
-                                          'order_time': int(datetime.now().timestamp())})
+                                          'order_time': unpaid_orders[order_id]})
             
         except PyMongoError as e:
             logging.info("528, {}".format(str(e)))
