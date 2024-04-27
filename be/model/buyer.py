@@ -6,7 +6,6 @@ from be.model import error
 from datetime import datetime
 
 unpaid_orders = {}
-time_limit = 20
 
 
 class Buyer(db_conn.DBConn):
@@ -76,7 +75,7 @@ class Buyer(db_conn.DBConn):
         try:
             new_order_col = self.db['new_order']
             row = new_order_col.find({'order_id':  order_id}, {'_id': 0, 'order_id': 1, 'user_id': 1, 'store_id': 1,
-                                                               'status': 1, 'total_price': 1, 'order_time': 1})
+                                                               'status': 1, 'total_price': 1})
 
             row = list(row)
             if not row:
@@ -88,7 +87,6 @@ class Buyer(db_conn.DBConn):
             store_id = row['store_id']
             status = row['status']
             total_price = row['total_price']
-            order_time = row['order_time']
 
             if status != 1:
                 return error.error_invalid_order_id(order_id)
@@ -98,10 +96,11 @@ class Buyer(db_conn.DBConn):
 
             cur_time = int(datetime.now().timestamp())
             time_diff = cur_time - unpaid_orders[order_id]
-            if time_diff > time_limit:
+            if time_diff > self.time_limit:
                 try:
                     unpaid_orders.pop(order_id)
-                    result = self.db['new_order_detail'].find({'order_id': order_id}, {'_id': 0, 'book_id': 1, 'count': 1})
+                    result = self.db['new_order_detail'].find({'order_id': order_id},
+                                                              {'_id': 0, 'book_id': 1, 'count': 1})
                     if not list(result):
                         return error.error_invalid_order_id(order_id)
                     for row in result:
@@ -113,15 +112,11 @@ class Buyer(db_conn.DBConn):
 
                     self.db['new_order'].delete_one({'order_id': order_id})
 
-                    self.db['new_order_detail'].delete_one({'order_id': order_id})
+                    self.db['new_order_detail'].delete_many({'order_id': order_id})
                 except PyMongoError as e:
                     return 529, "{}".format(str(e))
                 except BaseException as e:
                     return 530, "{}".format(str(e))
-                return error.error_order_timelimit_exceeded(order_id)
-
-            duration = int(datetime.now().timestamp()) - order_time
-            if duration > self.time_limit:
                 return error.error_order_timelimit_exceeded(order_id)
 
             user_col = self.db['user']
