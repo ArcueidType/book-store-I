@@ -192,3 +192,30 @@ class User(db_conn.DBConn):
         except BaseException as e:
             return 530, "{}".format(str(e)), []
         return 200, "ok", result
+
+    def history_order(self, user_id: str) -> (int, str, list):
+        try:
+            if not self.user_id_exist(user_id):
+                return error.error_non_exist_user_id(user_id)
+
+            user_orders = list(self.db['history_order'].find({'user_id': user_id}, {'_id': 0}))
+
+        except PyMongoError as e:
+            return 529, "{}".format(str(e)), []
+        except BaseException as e:
+            return 530, "{}".format(str(e)), []
+        return 200, "ok", user_orders
+
+    def recommend_generate(self, user_id: str) -> (int, str, list):
+        try:
+            code, _, user_orders = self.history_order(user_id)
+            if code != 200:
+                return error.error_non_exist_user_id(user_id)
+
+            recommend = {}
+            user_tags = []
+            for order in user_orders:
+
+
+
+
