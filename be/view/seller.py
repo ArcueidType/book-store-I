@@ -48,7 +48,6 @@ def add_stock_level():
 def deliver_book():
     order_id: str = request.json.get("order_id")
     store_id: str = request.json.get("store_id")
-    book_id: str = request.json.get("book_id")
     s = seller.Seller()
-    code, message = s.deliver_book(order_id=order_id, store_id=store_id, book_id=book_id)
+    code, message = s.deliver_book(order_id=order_id, store_id=store_id)
     return jsonify({"message": message}), code
