@@ -40,3 +40,9 @@ class Auth:
         url = urljoin(self.url_prefix, "unregister")
         r = requests.post(url, json=json)
         return r.status_code
+
+    def search_history_orders(self, user_id: str) -> int:
+        json = {"user_id": user_id}
+        url = urljoin(self.url_prefix, "search_history_orders")
+        r = requests.post(url, json=json)
+        return r.status_code, r.json().get("result")
