@@ -372,9 +372,13 @@ class Buyer(db_conn.DBConn):
                                                 'book_author': 1}).sort({'search_id': 1})
             rows = list(rows)
             result = []
+            store_col = self.db['store']
             for row in rows:
+                book_id = row['book_id']
+                if not store_col.find_one({'book_id': book_id}):
+                    continue
                 book = {
-                    'id': row['book_id'],
+                    'id': book_id,
                     'title': row['book_title'],
                     'author': row['book_author']
                 }

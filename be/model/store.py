@@ -46,7 +46,8 @@ class Store:
 
             inverted_index_ii = inverted_index_col.index_information()
             if 'inverted_index_index' not in inverted_index_ii.keys():
-                inverted_index_col.create_index([('search_key', 1), ('search_id', 1)],
+                inverted_index_col.create_index([('search_key', 1),
+                                                 ('book_id', 1), ('search_id', 1)],
                                                 unique=True, name='inverted_index_index')
 
         except PyMongoError as e:
