@@ -11,9 +11,9 @@ class TestSearchHistoryOrder:
 
     def pre_run_initialization(self):
         self.auth = auth.Auth(conf.URL)
-        self.seller_id = "test_order_seller_id_{}".format(str(uuid.uuid1()))
-        self.store_id = "test_order_store_id_{}".format(str(uuid.uuid1()))
-        self.buyer_id = "test_order_buyer_id_{}".format(str(uuid.uuid1()))
+        self.seller_id = "test_search_history_order_seller_id_{}".format(str(uuid.uuid1()))
+        self.store_id = "test_search_history_order_store_id_{}".format(str(uuid.uuid1()))
+        self.buyer_id = "test_search_history_order_buyer_id_{}".format(str(uuid.uuid1()))
         self.password = self.buyer_id
         self.buyer = register_new_buyer(self.buyer_id, self.password)
         self.gen_book = GenBook(self.seller_id, self.store_id)

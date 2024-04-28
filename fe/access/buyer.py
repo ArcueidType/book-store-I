@@ -64,7 +64,7 @@ class Buyer:
             "user_id": user_id,
             "order_id": order_id
         }
-        url = urljoin(self.url_prefix, "comfirm_delivery")
+        url = urljoin(self.url_prefix, "confirm_delivery")
         headers = {"token": self.token}
         r = requests.post(url, headers=headers, json=json)
         return r.status_code
@@ -74,7 +74,7 @@ class Buyer:
             "user_id": self.user_id,
             "order_id": order_id
         }
-        url = urljoin(self.url_prefix, "comfirm_delivery")
+        url = urljoin(self.url_prefix, "confirm_delivery")
         headers = {"token": self.token}
         r = requests.post(url, headers=headers, json=json)
         return r.status_code
@@ -87,14 +87,14 @@ class Buyer:
         url = urljoin(self.url_prefix, 'search')
         headers = {"token": self.token}
         r = requests.post(url, headers=headers, json=json)
-        return r.status_code
+        return r.status_code, r.json().get("result")
 
     def search_multi_words(self, key_words: list):
         json = {"key_words": key_words}
         url = urljoin(self.url_prefix, 'search_multi_words')
         headers = {"token": self.token}
         r = requests.post(url, headers=headers, json=json)
-        return r.status_code
+        return r.status_code, r.json().get("result")
 
     def search_in_store(self, store_id: str, search_key: str, page: int):
         json = {
@@ -105,4 +105,4 @@ class Buyer:
         url = urljoin(self.url_prefix, 'search_in_store')
         headers = {"token": self.token}
         r = requests.post(url, headers=headers, json=json)
-        return r.status_code
+        return r.status_code, r.json().get("result")
