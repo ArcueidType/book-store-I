@@ -239,12 +239,9 @@ class User(db_conn.DBConn):
                                                                     'title': 1,
                                                                     'author': 1,
                                                                     'tags': 1})
+                    if each_recommend_book['author'] is None:
+                        each_recommend_book['author'] = "Unknown"
                     recommend_books.append(book['book_id'] + list(each_recommend_book.values()))
-                
-                # with open('../123.txt', 'w') as file:
-                #     for i in recommend_books:
-                #         if i is not None:
-                #             file.writelines(i)
                 return 200, "ok", recommend_books
 
             # 遍历历史订单，生成用户-tag表
@@ -264,7 +261,8 @@ class User(db_conn.DBConn):
                     each_book = self.db['book'].find_one({'id': book[0]},
                                                          {'_id': 0, 'id': 1, 'title': 1, 'author': 1, 'tags': 1})
                     tags = set(each_book['tags'].split("\n"))
-                    tags.add(each_book['author'])
+                    if each_book['author'] is not None:
+                        tags.add(each_book['author'])
                     all_books_tags[book[0]] = tags
                     users_tags.setdefault(user, set()).update(tags)
 
@@ -278,13 +276,9 @@ class User(db_conn.DBConn):
                                                                     'title': 1,
                                                                     'author': 1,
                                                                     'tags': 1})
+                    if each_recommend_book['author'] is None:
+                        each_recommend_book['author'] = "Unknown"
                     recommend_books.append(list(each_recommend_book.values()))
-                
-                # with open('../123.txt', 'w') as file:
-                #     for i in recommend_books:
-                #         for j in i:
-                #             if j is not None:
-                #                 file.writelines(j)
                 return 200, "ok", recommend_books
 
             for _, user_tags in users_tags.items():
@@ -338,7 +332,7 @@ class User(db_conn.DBConn):
                     sim_value = sum(recommend_tags[tag] for tag in intersection)
                     recommends.append([book_id, tags, sim_value])
 
-            recommends = sorted(recommends, key=lambda x: x[2], reverse=True)[:20]
+            recommends = sorted(recommends, key=lambda x: x[2], reverse=True)[:10]
             for book_info in recommends:
                 if book_info[0] in target_user_history or not self.book_is_on_sale(book_info[0]):
                     continue
@@ -346,14 +340,11 @@ class User(db_conn.DBConn):
                 if book['author'] is None:
                     book['author'] = "Unknown"
                 book_info[2] = str(book_info[2])
-                temp = list(book.values()) + book_info[1:]
+                temp = list(book.values())
+                temp.append(list(book_info[1]))
+                temp.append(book_info[2])
                 recommend_books.append(temp)
             
-                # with open('../123.txt', 'w') as file:
-                #     for i in recommend_books:
-                #         for j in i:
-                #             if j is not None and j != "":
-                #                 file.writelines(j)
                 if recommend_books is None or recommend_books == []:
                     sorted_best_selling = sorted(best_selling_rank.items(), key=lambda x: x[1], reverse=True)[:10]
                     for book in sorted_best_selling:
@@ -367,11 +358,11 @@ class User(db_conn.DBConn):
                             each_recommend_book['author'] = "Unknown"
                         recommend_books.append(list(each_recommend_book.values()))
                 
-                with open('../123.txt', 'w') as file:
-                    for i in recommend_books:
-                        for j in i:
-                            if j is not None and j != "":
-                                file.writelines(j)
+                # with open('../123.txt', 'w') as file:
+                #     for i in recommend_books:
+                #         for j in i:
+                #             if j is not None and j != "":
+                #                 file.writelines(j)
 
         except PyMongoError as e:
             return 529, "{}".format(str(e)), []
