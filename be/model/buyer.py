@@ -58,15 +58,22 @@ class Buyer(db_conn.DBConn):
 
             unpaid_orders[order_id] = int(datetime.now().timestamp())
             new_order_col = self.db['new_order']
-            new_order_col.insert_one({'order_id':  order_id, 'store_id':  store_id, 'user_id':  user_id,
-                                      'status':  1, 'total_price':  total_price,
+            new_order_col.insert_one({'order_id': order_id,
+                                      'store_id': store_id,
+                                      'user_id': user_id,
+                                      'status': 1,
+                                      'total_price': total_price,
                                       'order_time': unpaid_orders[order_id]})
-            
+
             history_order_col = self.db['history_order']
-            history_order_col.insert_one({'order_id': order_id, 'user_id': user_id, 'store_id': store_id,
-                                          'status': 1, 'total_price': total_price,
-                                          'order_time': unpaid_orders[order_id]})
-            
+            history_order_col.insert_one({'order_id': order_id,
+                                          'user_id': user_id,
+                                          'store_id': store_id,
+                                          'status': 1,
+                                          'total_price': total_price,
+                                          'order_time': unpaid_orders[order_id],
+                                          'books': id_and_count})
+
         except PyMongoError as e:
             logging.info("528, {}".format(str(e)))
             return 528, "{}".format(str(e)), ""
@@ -167,13 +174,12 @@ class Buyer(db_conn.DBConn):
 
             if cursor.modified_count == 0:
                 return error.error_invalid_order_id(order_id)
-            
+
             history_order_col = self.db['history_order']
             cursor = history_order_col.update_one({'order_id': order_id}, {'$set': {'status': 2}})
 
             if cursor.modified_count == 0:
                 return error.error_invalid_order_id(order_id)
-            
 
         except PyMongoError as e:
             return 528, "{}".format(str(e))
@@ -225,7 +231,7 @@ class Buyer(db_conn.DBConn):
             store_id = row['store_id']
             total_price = row['total_price']
             status = row['status']
-            order_time = row['order_time']
+
             if buyer_id != user_id:
                 return error.error_authorization_fail
             if status != 2:
@@ -241,15 +247,8 @@ class Buyer(db_conn.DBConn):
                 return error.error_non_exist_user_id(seller_id)
 
             self.db['users'].update_one({'user_id': user_id}, {'$inc': {"balance": total_price}})
-
             self.db['users'].update_one({'user_id': seller_id}, {'$inc': {"balance": -total_price}})
-
-            self.db['history_order'].insert_one({'order_id': order_id,
-                                                 'user_id': user_id,
-                                                 'store_id': store_id,
-                                                 'status': 0,
-                                                 'total_price': total_price,
-                                                 'order_time': order_time})
+            self.db['history_order'].update_one({'order_id': order_id}, {'$set': {'status': 0}})
 
             result_cursor = self.db['new_order_detail'].find({'order_id': order_id}, {'_id': 0, 'book_id': 1, 'count': 1})
             result_list = list(result_cursor)
@@ -270,7 +269,7 @@ class Buyer(db_conn.DBConn):
             return 529, "{}".format(str(e))
         except BaseException as e:
             return 530, "{}".format(str(e))
-        return 200, "manual cancel"
+        return 200, "manual cancelled"
 
     def confirm_delivery(self, order_id:  str, user_id:  str) -> (int, str):
         try:
@@ -294,20 +293,20 @@ class Buyer(db_conn.DBConn):
                 return error.error_authorization_fail()
             if status != 3:
                 return error.error_invalid_order_status(order_id)
-            seller = self.db['user_store'].find({'store_id':  store_id}, {'_id':  0})
+            seller = self.db['user_store'].find({'store_id': store_id}, {'_id': 0})
             if not list(seller):
                 return error.error_non_exist_store_id(store_id)
             seller_id = seller['user_id']
             if not self.user_id_exist(seller_id):
                 return error.error_non_exist_user_id(seller_id)
 
-            self.db['user'].update_one({'user id':  seller_id}, {'$inc':  {'balance':  total_price}})
+            self.db['user'].update_one({'user id': seller_id}, {'$inc': {'balance': total_price}})
             cursor = self.db['history_order'].update_one({'order_id': order_id}, {'$set': {'status': 4}})
             if cursor.modified_count == 0:
                 return error.error_invalid_order_id(order_id)
-            
-            self.db['new_order'].delete_one({'order_id':  order_id})
-            self.db['new_order_detail'].delete_one({'order_id':  order_id})
+
+            self.db['new_order'].delete_one({'order_id': order_id})
+            self.db['new_order_detail'].delete_one({'order_id': order_id})
 
         except PyMongoError as e:
             return 529, "{}".format(str(e))
@@ -315,7 +314,7 @@ class Buyer(db_conn.DBConn):
             return 530, "{}".format(str(e))
         return 200, "delivery confirmed"
 
-    def auto_cancel_orders(self, order_id, user_id): 
+    def auto_cancel_orders(self, order_id, user_id):
         if not self.user_id_exist(user_id):
             return error.error_non_exist_user_id(user_id)
         if not self.order_id_exist(order_id):

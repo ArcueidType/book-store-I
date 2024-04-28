@@ -50,7 +50,7 @@ class TestOrder:
         code = self.seller.deliver_book(self.store_id+ "_x", order_id)
         assert code != 200
 
-    '''
+
     def test_comfirm_delivery_ok(self):
         ok, buy_book_id_list = self.gen_book.gen(non_exist_book_id=False, low_stock_level=False)
         assert ok
@@ -85,7 +85,7 @@ class TestOrder:
         code = self.buyer.confirm_delivery(self.buyer_id+ "_x", order_id)
         assert code != 200
 
-    '''
+
     def test_manual_cancel_orders_ok(self):
         ok, buy_book_id_list = self.gen_book.gen(non_exist_book_id=False, low_stock_level=False)
         assert ok

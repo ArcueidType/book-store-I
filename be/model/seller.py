@@ -79,6 +79,9 @@ class Seller(db_conn.DBConn):
                 return error.error_non_exist_store_id(store_id)
             if not self.order_id_exist(order_id):
                 return error.error_invalid_order_id(order_id)
+            status = self.db['new_order'].find_one({'order_id': order_id}, {'_id': 0})
+            if status['status'] != 2:
+                return error.error_invalid_order_status(order_id)
 
             self.db['new_order'].update_one({'order_id': order_id}, {'$set': {'status': 3}})
             cursor = self.db['history_order'].update_one({'order_id': order_id}, {'$set': {'status': 3}})
