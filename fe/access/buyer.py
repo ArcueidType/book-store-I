@@ -67,14 +67,14 @@ class Buyer:
         url = urljoin(self.url_prefix, "confirm_delivery")
         headers = {"token": self.token}
         r = requests.post(url, headers=headers, json=json)
-        return r.status_code, r.json()
+        return r.status_code
     
     def auto_cancel_orders(self, order_id: str): 
         json = {
             "user_id": self.user_id,
             "order_id": order_id
         }
-        url = urljoin(self.url_prefix, "confirm_delivery")
+        url = urljoin(self.url_prefix, "auto_cancel_orders")
         headers = {"token": self.token}
         r = requests.post(url, headers=headers, json=json)
         return r.status_code

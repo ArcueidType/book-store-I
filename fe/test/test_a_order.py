@@ -34,21 +34,20 @@ class TestOrder:
         code = self.buyer.payment(order_id)
         code = self.seller.deliver_book(self.store_id, order_id)
         assert code == 200
-    
+
     def test_deliver_non_exist_order_id(self):
         ok, buy_book_id_list = self.gen_book.gen(non_exist_book_id=False, low_stock_level=False)
         assert ok
         _, order_id = self.buyer.new_order(self.store_id, buy_book_id_list)
         code = self.seller.deliver_book(self.store_id, order_id+ "_x")
         assert code != 200
-    
+
     def test_deliver_non_exist_store_id(self):
         ok, buy_book_id_list = self.gen_book.gen(non_exist_book_id=False, low_stock_level=False)
         assert ok
         code, order_id = self.buyer.new_order(self.store_id, buy_book_id_list)
         code = self.seller.deliver_book(self.store_id+ "_x", order_id)
         assert code != 200
-
 
     def test_confirm_delivery_ok(self):
         ok, buy_book_id_list = self.gen_book.gen(non_exist_book_id=False, low_stock_level=False)
@@ -59,7 +58,6 @@ class TestOrder:
         code = self.seller.deliver_book(self.store_id, order_id)
         code = self.buyer.confirm_delivery(self.buyer_id, order_id)
         assert code == 200
-
 
     def test_confirm_delivery_status_error(self):
         ok, buy_book_id_list = self.gen_book.gen(non_exist_book_id=False, low_stock_level=False)
