@@ -298,7 +298,8 @@ class Buyer(db_conn.DBConn):
             seller = list(seller)
             if not seller:
                 return error.error_non_exist_store_id(store_id)
-            seller_id = seller[0]['user_id']
+            seller = seller[0]
+            seller_id = seller['user_id']
             if not self.user_id_exist(seller_id):
                 return error.error_non_exist_user_id(seller_id)
 
