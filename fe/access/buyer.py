@@ -48,3 +48,31 @@ class Buyer:
         headers = {"token": self.token}
         r = requests.post(url, headers=headers, json=json)
         return r.status_code
+
+    def search(self, search_key: str, page: int):
+        json = {
+            "search_key": search_key,
+            "page": page
+        }
+        url = urljoin(self.url_prefix, 'search')
+        headers = {"token": self.token}
+        r = requests.post(url, headers=headers, json=json)
+        return r.status_code
+
+    def search_multi_words(self, key_words: list):
+        json = {"key_words": key_words}
+        url = urljoin(self.url_prefix, 'search_multi_words')
+        headers = {"token": self.token}
+        r = requests.post(url, headers=headers, json=json)
+        return r.status_code
+
+    def search_in_store(self, store_id: str, search_key: str, page: int):
+        json = {
+            "store_id": store_id,
+            "search_key": search_key,
+            "page": page
+        }
+        url = urljoin(self.url_prefix, 'search_in_store')
+        headers = {"token": self.token}
+        r = requests.post(url, headers=headers, json=json)
+        return r.status_code
