@@ -41,8 +41,14 @@ class Auth:
         r = requests.post(url, json=json)
         return r.status_code
 
-    def search_history_orders(self, user_id: str) -> int:
+    def search_history_orders(self, user_id: str) -> (int, list):
         json = {"user_id": user_id}
         url = urljoin(self.url_prefix, "search_history_orders")
+        r = requests.post(url, json=json)
+        return r.status_code, r.json().get("result")
+
+    def recommend_generate(self, user_id: str) -> (int, list):
+        json = {"user_id": user_id}
+        url = urljoin(self.url_prefix, "recommend_generate")
         r = requests.post(url, json=json)
         return r.status_code, r.json().get("result")

@@ -1,6 +1,7 @@
 import jwt
 import time
 import logging
+import traceback
 from pymongo.errors import PyMongoError
 from be.model import error
 from be.model import db_conn
@@ -196,37 +197,103 @@ class User(db_conn.DBConn):
             return 530, "{}".format(str(e)), []
         return 200, "ok", result
 
+    def book_is_on_sale(self, book_id: str) -> bool:
+        if list(self.db['store'].find({'book_id': book_id, 'stock_level': {'$gt': 0}}, {'_id': 0})):
+            return True
+        else:
+            return False
+
     # ItemCF-IUF物品协同过滤推荐算法
-    def recommend_generate(self, user_id: str) -> (int, str, list):
+    def recommend_generate(self, user_id: str):
         try:
+            if not self.user_id_exist(user_id):
+                return error.error_non_exist_user_id(user_id) + ([],)
+
             users_tags = defaultdict(set)
             users_books = defaultdict(set)
             all_books_tags = defaultdict(set)
             target_user_history = set()
-            history_orders = self.db['history_order']
+            recommend_books = []
+            recommend_books_id = []
+            best_selling_rank = defaultdict(int)
 
-            for history_order in history_orders.find({'status': 4}, {'_id': 0}):
-                books = history_order['books']
-                user = history_orders['user_id']
-                for book in books:
-                    if book[0] in users_books[user]:
+            history_orders = list(self.db['history_order'].find({'status': 4}, {'_id': 0}))
+            # 如果所有用户都没有历史订单，随机把1-10本在售的书推荐给ta
+            if not history_orders:
+                books_on_sale = self.db['store']
+                total_books = books_on_sale.count_documents({})
+                sample_size = min(total_books, 10)
+                match_cond = {"stock_level": {"$gt": 0}}
+                pipeline = [
+                    {"$match": match_cond},
+                    {"$sample": {"size": sample_size}}
+                ]
+                random_books = list(books_on_sale.aggregate(pipeline))
+                for book in random_books:
+                    if book['book_id'] in recommend_books_id:
                         continue
+                    recommend_books_id.append(book['book_id'])
+                    each_recommend_book = self.db['book'].find_one({'id': book['book_id']},
+                                                                   {'_id': 0,
+                                                                    'id': 0,
+                                                                    'title': 1,
+                                                                    'author': 1,
+                                                                    'tags': 1})
+                    recommend_books.append(book['book_id'] + list(each_recommend_book.values()))
+                
+                # with open('../123.txt', 'w') as file:
+                #     for i in recommend_books:
+                #         if i is not None:
+                #             file.writelines(i)
+                return 200, "ok", recommend_books
+
+            # 遍历历史订单，生成用户-tag表
+            for history_order in history_orders:
+                books = history_order['books']
+                user = history_order['user_id']
+                for book in books:
+                    if self.book_is_on_sale(book[0]):
+                        best_selling_rank.setdefault(book[0], 0)
+                        best_selling_rank[book[0]] += book[1]
                     if user == user_id:
                         target_user_history.add(book[0])
+                    if book[0] in users_books[user]:
+                        continue
 
-                    users_books.setdefault(user, []).append(book[0])
+                    users_books.setdefault(user, set()).add(book[0])
                     each_book = self.db['book'].find_one({'id': book[0]},
                                                          {'_id': 0, 'id': 1, 'title': 1, 'author': 1, 'tags': 1})
                     tags = set(each_book['tags'].split("\n"))
-                    tags = tags.add(each_book['author'])
+                    tags.add(each_book['author'])
                     all_books_tags[book[0]] = tags
                     users_tags.setdefault(user, set()).update(tags)
+
+            # 如果是新用户没有购书记录，把最畅销且在售的1-10本书推荐给ta
+            if not len(target_user_history):
+                sorted_best_selling = sorted(best_selling_rank.items(), key=lambda x: x[1], reverse=True)[:10]
+                for book in sorted_best_selling:
+                    each_recommend_book = self.db['book'].find_one({'id': book[0]},
+                                                                   {'_id': 0,
+                                                                    'id': 1,
+                                                                    'title': 1,
+                                                                    'author': 1,
+                                                                    'tags': 1})
+                    recommend_books.append(list(each_recommend_book.values()))
+                
+                # with open('../123.txt', 'w') as file:
+                #     for i in recommend_books:
+                #         for j in i:
+                #             if j is not None:
+                #                 file.writelines(j)
+                return 200, "ok", recommend_books
 
             for _, user_tags in users_tags.items():
                 user_tags.remove('')
 
-            tag_total_matched = defaultdict(int)   # 每个tag被所有user购买过book的tags的匹配次数总和
-            tag_sim_matrix = defaultdict(dict)      # tag的共现矩阵
+            # 每个tag被所有user购买过book的tags的匹配次数总和
+            tag_total_matched = defaultdict(int)
+            # tag的共现矩阵
+            tag_sim_matrix = defaultdict(dict)
 
             # 以二维字典形式计算共现矩阵
             for user, tags in users_tags.items():
@@ -272,15 +339,45 @@ class User(db_conn.DBConn):
                     recommends.append([book_id, tags, sim_value])
 
             recommends = sorted(recommends, key=lambda x: x[2], reverse=True)[:20]
-            recommend_books = []
             for book_info in recommends:
-                if book_info[0] in target_user_history:
+                if book_info[0] in target_user_history or not self.book_is_on_sale(book_info[0]):
                     continue
                 book = self.db['book'].find_one({'id': book_info[0]}, {'_id': 0, 'id': 1, 'title': 1, 'author': 1})
-                recommend_books.append(list(book.values()) + book_info[1:])
+                if book['author'] is None:
+                    book['author'] = "Unknown"
+                book_info[2] = str(book_info[2])
+                temp = list(book.values()) + book_info[1:]
+                recommend_books.append(temp)
+            
+                # with open('../123.txt', 'w') as file:
+                #     for i in recommend_books:
+                #         for j in i:
+                #             if j is not None and j != "":
+                #                 file.writelines(j)
+                if recommend_books is None or recommend_books == []:
+                    sorted_best_selling = sorted(best_selling_rank.items(), key=lambda x: x[1], reverse=True)[:10]
+                    for book in sorted_best_selling:
+                        each_recommend_book = self.db['book'].find_one({'id': book[0]},
+                                                                       {'_id': 0,
+                                                                        'id': 1,
+                                                                        'title': 1,
+                                                                        'author': 1,
+                                                                        'tags': 1})
+                        if each_recommend_book['author'] is None:
+                            each_recommend_book['author'] = "Unknown"
+                        recommend_books.append(list(each_recommend_book.values()))
+                
+                with open('../123.txt', 'w') as file:
+                    for i in recommend_books:
+                        for j in i:
+                            if j is not None and j != "":
+                                file.writelines(j)
 
         except PyMongoError as e:
-            return 529, "{}".format(str(e))
+            return 529, "{}".format(str(e)), []
         except BaseException as e:
-            return 530, "{}".format(str(e))
+            traceback.print_exc()
+            tb = traceback.extract_tb(e.__traceback__)
+            line_number = tb[-1][1]
+            return 530, "{}".format(str(e)), [line_number]
         return 200, "ok", recommend_books
