@@ -181,7 +181,7 @@ class User(db_conn.DBConn):
     def search_history_orders(self, user_id):
         try:
             if not self.user_id_exist(user_id):
-                return error.error_non_exist_user_id(user_id)
+                return error.error_non_exist_user_id(user_id) + ([],)
             result = []
             orders = self.db['history_order'].find({'user_id': user_id}, {'_id': 0})
             for _ in orders:
