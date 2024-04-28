@@ -27,7 +27,7 @@ class TestSearchHistoryOrder:
         code = self.buyer.payment(order_id)
         code = self.seller.deliver_book(self.store_id, order_id)
         code = self.buyer.confirm_delivery(self.buyer_id, order_id)
-        code, result= self.auth.search_history_orders(self.buyer_id)
+        code, result = self.auth.search_history_orders(self.buyer_id)
         assert code == 200 and len(result) > 0
 
     def test_search_history_orders_non_exist_buyer_id(self):

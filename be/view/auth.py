@@ -63,3 +63,11 @@ def search_history_orders():
     u = user.User()
     code, message, result = u.search_history_orders(user_id=user_id)
     return jsonify({"message": message, "result": result}), code
+
+
+@bp_auth.route("/recommend_generate", methods=["POST"])
+def recommend_generate():
+    user_id = request.json.get("user_id", "")
+    u = user.User()
+    code, message, result = u.recommend_generate(user_id=user_id)
+    return jsonify({"message": message, "result": result}), code

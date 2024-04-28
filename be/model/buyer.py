@@ -279,12 +279,12 @@ class Buyer(db_conn.DBConn):
             if not self.order_id_exist(order_id):
                 return error.error_invalid_order_id(order_id)
 
-            delivery = self.db['new_order'].find({'order_id':  order_id}, {'_id':  0})
+            delivery = self.db['new_order'].find({'order_id': order_id}, {'_id': 0})
             delivery = list(delivery)
             if not delivery:
                 return error.error_invalid_order_id(order_id)
+
             delivery = delivery[0]
-            order_id = delivery['order_id']
             buyer_id = delivery['user_id']
             status = delivery['status']
             store_id = delivery['store_id']
@@ -295,13 +295,14 @@ class Buyer(db_conn.DBConn):
             if status != 3:
                 return error.error_invalid_order_status(order_id)
             seller = self.db['user_store'].find({'store_id': store_id}, {'_id': 0})
-            if not list(seller):
+            seller = list(seller)
+            if not seller:
                 return error.error_non_exist_store_id(store_id)
-            seller_id = seller['user_id']
+            seller_id = seller[0]['user_id']
             if not self.user_id_exist(seller_id):
                 return error.error_non_exist_user_id(seller_id)
 
-            self.db['user'].update_one({'user id': seller_id}, {'$inc': {'balance': total_price}})
+            self.db['user'].update_one({'user_id': seller_id}, {'$inc': {'balance': total_price}})
             cursor = self.db['history_order'].update_one({'order_id': order_id}, {'$set': {'status': 4}})
             if cursor.modified_count == 0:
                 return error.error_invalid_order_id(order_id)
