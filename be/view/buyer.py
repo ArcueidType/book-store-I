@@ -58,3 +58,30 @@ def manual_cancel_orders():
     b = Buyer()
     code, message = b.manual_cancel_orders(order_id=order_id, user_id=user_id)
     return jsonify({"message": message}), code
+
+
+@bp_buyer.route('/search', methods=['POST'])
+def search():
+    search_key: str = request.json.get('search_key')
+    page: int = request.json.get('page')
+    b = Buyer()
+    code, message, result = b.search(search_key, page)
+    return jsonify({'message': message, 'result': result}), code
+
+
+@bp_buyer.route('/search_multi_words', methods=['POST'])
+def search_multi_words():
+    key_words: list = request.json.get('key_words')
+    b = Buyer()
+    code, message, result = b.search_multi_words(key_words)
+    return jsonify({'message': message, 'result': result}), code
+
+
+@bp_buyer.route('/search_in_store', methods=['POST'])
+def search_in_store():
+    store_id: str = request.json.get('store_id')
+    search_key: str = request.json.get('search_key')
+    page: int = request.json.get('page')
+    b = Buyer()
+    code, message, result = b.search_in_store(store_id, search_key, page)
+    return jsonify({'message': message, 'result': result}), code

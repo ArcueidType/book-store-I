@@ -21,6 +21,7 @@ class Store:
             store_col = db['store']
             user_col = db['user']
             user_store_col = db['user_store']
+            inverted_index_col = db['inverted_index']
 
             new_order_ii = new_order_col.index_information()
             if 'new_order_index' not in new_order_ii.keys():
@@ -42,6 +43,11 @@ class Store:
             user_store_ii = user_store_col.index_information()
             if 'user_store_index' not in user_store_ii.keys():
                 user_store_col.create_index([('store_id', 1)], unique=True, name='user_store_index')
+
+            inverted_index_ii = inverted_index_col.index_information()
+            if 'inverted_index_index' not in inverted_index_ii.keys():
+                inverted_index_col.create_index([('search_key', 1), ('search_id', 1)],
+                                                unique=True, name='inverted_index_index')
 
         except PyMongoError as e:
             logging.error(e)

@@ -2,6 +2,11 @@ import json
 from be.model import error
 from be.model import db_conn
 from pymongo.errors import PyMongoError
+from be.model.utils import parse_country_author
+from be.model.utils import parse_name
+from be.model.utils import get_keywords
+from be.model.utils import get_prefix
+from be.model.utils import get_words_suffix
 
 
 class Seller(db_conn.DBConn):
@@ -26,6 +31,57 @@ class Seller(db_conn.DBConn):
 
             book_json = json.loads(book_json_str)
             price = book_json.get('price')
+            book_json.pop('price')
+
+            inverted_index_col = self.db['inverted_index']
+            cursor = inverted_index_col.find({'book_id': book_id})
+            if not list(cursor):
+                country, author = '', ''
+                if 'author' in book_json.keys():
+                    author = book_json.get('author')
+                    country, author = parse_country_author(author)
+                tags = []
+                if 'tags' in book_json.keys():
+                    tags = book_json.get('tags')
+                if 'author_intro' in book_json.keys():
+                    tags += get_keywords(book_json.get('author_intro'))
+                if 'book_intro' in book_json.keys():
+                    tags += get_keywords(book_json.get('book_intro'))
+                if 'content' in book_json.keys():
+                    tags += get_keywords(book_json.get('content'))
+                tags = list(set(tags))
+
+                prefixes = []
+                title = book_json.get('title')
+                prefixes += get_words_suffix(title)
+
+                if author != '':
+                    names = parse_name(author)
+                    for i in range(1, len(names)):
+                        prefixes += get_prefix(names[i])
+                    prefixes += get_prefix(author)
+                if 'original_title' in book_json.keys():
+                    prefixes += get_prefix(book_json.get('original_title'))
+                if 'translator' in book_json.keys():
+                    translator = book_json.get('translator')
+                    names = parse_name(translator)
+                    for i in range(1, len(names)):
+                        prefixes += get_prefix(names[i])
+                    prefixes += get_prefix(translator)
+                if country != '':
+                    prefixes += [country]
+                if tags:
+                    prefixes += tags
+                prefixes = list(set(prefixes))
+
+                for prefix in prefixes:
+                    cur_search_id = self.db['inverted_index'].count_documents({}) + 1
+                    inverted_index_col.insert_one({'search_key': prefix,
+                                                   'search_id': cur_search_id,
+                                                   'book_id': book_id,
+                                                   'book_title': title,
+                                                   'book_author': author})
+
             store_col = self.db['store']
             store_col.insert_one({'store_id': store_id, 'book_id': book_id, 'price': price,
                                   'stock_level': stock_level})

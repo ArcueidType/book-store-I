@@ -12,6 +12,7 @@ class Buyer(db_conn.DBConn):
     def __init__(self):
         db_conn.DBConn.__init__(self)
         self.time_limit = 300
+        self.page_size = 25
 
     def new_order(
         self, user_id:  str, store_id:  str, id_and_count:  [(str, int)]
@@ -350,3 +351,123 @@ class Buyer(db_conn.DBConn):
                 return 530, "{}".format(str(e))
             return error.error_order_timelimit_exceeded(order_id)
         return 200, "auto cancel"
+
+    def search(self, search_key, page=0) -> (int, str, list):
+        try:
+            inverted_index_col = self.db['inverted_index']
+            if page > 0:
+                page_start = self.page_size * (page - 1)
+                rows = inverted_index_col.find(
+                    {'search_key': search_key},
+                    {'_id': 0,
+                    'book_id': 1,
+                    'book_title': 1,
+                    'book_author': 1}
+                ).sort({'search_id': 1}).limit(self.page_size).skip(page_start)
+            else:
+                rows = inverted_index_col.find({'search_key': search_key},
+                                               {'_id': 0,
+                                                'book_id': 1,
+                                                'book_title': 1,
+                                                'book_author': 1}).sort({'search_id': 1})
+            rows = list(rows)
+            result = []
+            for row in rows:
+                book = {
+                    'id': row['book_id'],
+                    'title': row['book_title'],
+                    'author': row['book_author']
+                }
+                result.append(book)
+
+        except PyMongoError as e:
+            return 529, '{}'.format(str(e)), []
+        except BaseException as e:
+            return 530, '{}'.format(str(e)), []
+        return 200, 'ok', result
+
+    def search_multi_words(self, key_words) -> (int, str, list):
+        try:
+            result = []
+            for word in key_words:
+                code, message, cur_res = self.search(word, 0)
+                if code == 200:
+                    result += cur_res
+
+            unique_dict = {}
+            for record in result:
+                if record['id'] in unique_dict.keys():
+                    continue
+                unique_dict[record['id']] = record
+            result = list(unique_dict.values())
+        except PyMongoError as e:
+            return 529, '{}'.format(str(e)), []
+        except BaseException as e:
+            return 530, '{}'.format(str(e)), []
+        return 200, 'ok', result
+
+    def search_in_store(self, store_id, search_key, page=0) -> (int, str, list):
+        try:
+            if not self.store_id_exist(store_id):
+                return error.error_non_exist_store_id(store_id) + ([],)
+
+            inverted_index_col = self.db['inverted_index']
+
+            if page > 0:
+                page_start = self.page_size * (page - 1)
+                rows = inverted_index_col.aggregate([{'$lookup': {
+                                                    'from': 'store',
+                                                    'localField': 'book_id',
+                                                    'foreignField': 'book_id',
+                                                    'as': 'search_doc'}},
+                                                     {'$project': {
+                                                         'search_doc.store_id': 1,
+                                                         'search_key': 1,
+                                                         'search_id': 1,
+                                                         'book_id': 1,
+                                                         'book_title': 1,
+                                                         'book_author': 1,
+                                                         '_id': 0
+                                                     }},
+                                                     {'$match': {
+                                                         'search_key': search_key,
+                                                         'search_doc.store_id': store_id
+                                                     }},
+                                                     {'$sort': {'search_id': 1}},
+                                                     {'$skip': page_start},
+                                                     {'$limit': self.page_size}])
+            else:
+                rows = inverted_index_col.aggregate([{'$lookup': {
+                                                    'from': 'store',
+                                                    'localField': 'book_id',
+                                                    'foreignField': 'book_id',
+                                                    'as': 'search_doc'}},
+                                                    {'$project': {
+                                                        'search_doc.store_id': 1,
+                                                        'search_key': 1,
+                                                        'search_id': 1,
+                                                        'book_id': 1,
+                                                        'book_title': 1,
+                                                        'book_author': 1,
+                                                        '_id': 0
+                                                    }},
+                                                    {'$match': {
+                                                        'search_key': search_key,
+                                                        'search_doc.store_id': store_id
+                                                    }},
+                                                    {'$sort': {'search_id': 1}}])
+
+            rows = list(rows)
+            result = []
+            for row in rows:
+                book = {
+                    'id': row['book_id'],
+                    'title': row['book_title'],
+                    'author': row['book_author']
+                }
+                result.append(book)
+        except PyMongoError as e:
+            return 529, '{}'.format(str(e)), []
+        except BaseException as e:
+            return 530, '{}'.format(str(e)), []
+        return 200, 'ok', result
