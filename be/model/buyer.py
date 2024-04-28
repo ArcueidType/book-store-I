@@ -279,7 +279,7 @@ class Buyer(db_conn.DBConn):
                 return error.error_invalid_order_id(order_id)
 
             delivery = self.db['new_order'].find({'order_id':  order_id}, {'_id':  0})
-            delivery= list(delivery)
+            delivery = list(delivery)
             if not delivery:
                 return error.error_invalid_order_id(order_id)
             delivery = delivery[0]
