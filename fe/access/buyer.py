@@ -48,3 +48,33 @@ class Buyer:
         headers = {"token": self.token}
         r = requests.post(url, headers=headers, json=json)
         return r.status_code
+
+    def manual_cancel_orders(self, user_id: str, order_id: str): 
+        json = {
+            "user_id": user_id,
+            "order_id": order_id
+        }
+        url = urljoin(self.url_prefix, "manual_cancel_orders")
+        headers = {"token": self.token}
+        r = requests.post(url, headers=headers, json=json)
+        return r.status_code
+    
+    def confirm_delivery(self, user_id: str, order_id: str): 
+        json = {
+            "user_id": user_id,
+            "order_id": order_id
+        }
+        url = urljoin(self.url_prefix, "comfirm_delivery")
+        headers = {"token": self.token}
+        r = requests.post(url, headers=headers, json=json)
+        return r.status_code
+    
+    def auto_cancel_orders(self, order_id: str): 
+        json = {
+            "user_id": self.user_id,
+            "order_id": order_id
+        }
+        url = urljoin(self.url_prefix, "comfirm_delivery")
+        headers = {"token": self.token}
+        r = requests.post(url, headers=headers, json=json)
+        return r.status_code

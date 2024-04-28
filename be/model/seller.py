@@ -73,12 +73,12 @@ class Seller(db_conn.DBConn):
             return 530, "{}".format(str(e))
         return 200, "ok"
 
-    def deliver_book(self, order_id: str, store_id: str, book_id: str) -> (int, str):
+    def deliver_book(self, order_id: str, store_id: str) -> (int, str):
         try:
             if not self.store_id_exist(store_id):
                 return error.error_non_exist_store_id(store_id)
-            if not self.book_id_exist(store_id, book_id):
-                return error.error_non_exist_book_id(book_id)
+            if not self.order_id_exist(order_id):
+                return error.error_invalid_order_id(order_id)
 
             self.db['new_order'].update_one({'order_id': order_id}, {'$set': {'status': 3}})
             cursor = self.db['history_order'].update_one({'order_id': order_id}, {'$set': {'status': 3}})
@@ -89,3 +89,4 @@ class Seller(db_conn.DBConn):
             return 529, "{}".format(str(e))
         except BaseException as e:
             return 530, "{}".format(str(e))
+        return 200, "ok"

@@ -7,6 +7,8 @@ from be.view import auth
 from be.view import seller
 from be.view import buyer
 from be.model.store import init_database, init_completed_event
+from apscheduler.schedulers.blocking import BlockingScheduler
+
 
 bp_shutdown = Blueprint("shutdown", __name__)
 
@@ -24,7 +26,7 @@ def be_shutdown():
     return "Server shutting down..."
 
 
-def be_run():
+def be_run(auto_cancel=False):
     database = 'mongodb://localhost:27017/'
     this_path = os.path.dirname(__file__)
     parent_path = os.path.dirname(this_path)
@@ -45,4 +47,10 @@ def be_run():
     app.register_blueprint(seller.bp_seller)
     app.register_blueprint(buyer.bp_buyer)
     init_completed_event.set()
+
+    if auto_cancel == True:
+        scheduler = BlockingScheduler()
+        scheduler.add_job('__main__:auto_cancel_orders', 'interval', seconds=30)
+        print("Settings: Auto Cancel Out Of Time Orders")
+        scheduler.start() 
     app.run()

@@ -52,3 +52,15 @@ class Seller:
         headers = {"token": self.token}
         r = requests.post(url, headers=headers, json=json)
         return r.status_code
+
+    def deliver_book(
+            self, store_id: str, order_id: str
+    ):
+        json = {
+            "store_id": store_id,
+            "order_id": order_id
+        }
+        url = urljoin(self.url_prefix, "deliver_book")
+        headers = {"token": self.token}
+        r = requests.post(url, headers=headers, json=json)
+        return r.status_code

@@ -104,11 +104,12 @@ class Buyer(db_conn.DBConn):
             if time_diff > self.time_limit:
                 try:
                     unpaid_orders.pop(order_id)
-                    result = self.db['new_order_detail'].find({'order_id': order_id},
+                    result_cursor = self.db['new_order_detail'].find({'order_id': order_id},
                                                               {'_id': 0, 'book_id': 1, 'count': 1})
-                    if not list(result):
+                    result_list = list(result_cursor)
+                    if not result_list:
                         return error.error_invalid_order_id(order_id)
-                    for row in result:
+                    for row in result_list:
                         book_id = row['book_id']
                         count = row['count']
                         self.db['store'].update_one({'store_id': store_id,
@@ -215,8 +216,10 @@ class Buyer(db_conn.DBConn):
                 return error.error_invalid_order_id(order_id)
 
             row = self.db['new_order'].find({'order_id': order_id}, {'_id': 0})
-            if not list(row):
+            row = list(row)
+            if not row:
                 return error.error_invalid_order_id(order_id)
+            row = row[0]
             order_id = row['order_id']
             buyer_id = row['user_id']
             store_id = row['store_id']
@@ -229,8 +232,10 @@ class Buyer(db_conn.DBConn):
                 return error.error_invalid_order_status(order_id)
 
             result = self.db['user_store'].find({'store_id': store_id}, {'_id': 0})
-            if not list(result):
+            result = list(result)
+            if not result:
                 return error.error_non_exist_store_id(store_id)
+            result = result[0]
             seller_id = result['user_id']
             if not self.user_id_exist(seller_id):
                 return error.error_non_exist_user_id(seller_id)
@@ -246,10 +251,11 @@ class Buyer(db_conn.DBConn):
                                                  'total_price': total_price,
                                                  'order_time': order_time})
 
-            result = self.db['new_order_detail'].find({'order_id': order_id}, {'_id': 0, 'book_id': 1, 'count': 1})
-            if not list(result):
+            result_cursor = self.db['new_order_detail'].find({'order_id': order_id}, {'_id': 0, 'book_id': 1, 'count': 1})
+            result_list = list(result_cursor)
+            if not result_list:
                 return error.error_invalid_order_id(order_id)
-            for row in result:
+            for row in result_list:
                 book_id = row['book_id']
                 count = row['count']
                 self.db['store'].update_one({'store_id': store_id,
@@ -261,10 +267,10 @@ class Buyer(db_conn.DBConn):
             self.db['new_order_detail'].delete_one({'order_id': order_id})
 
         except PyMongoError as e:
-            return 529, "{}".format(str(e)), []
+            return 529, "{}".format(str(e))
         except BaseException as e:
-            return 530, "{}".format(str(e)), []
-        return 200, "ok", result
+            return 530, "{}".format(str(e))
+        return 200, "manual cancel"
 
     def confirm_delivery(self, order_id:  str, user_id:  str) -> (int, str):
         try:
@@ -274,12 +280,15 @@ class Buyer(db_conn.DBConn):
                 return error.error_invalid_order_id(order_id)
 
             delivery = self.db['new_order'].find({'order_id':  order_id}, {'_id':  0})
+            delivery= list(delivery)
+            if not delivery:
+                return error.error_invalid_order_id(order_id)
+            delivery = delivery[0]
             order_id = delivery['order_id']
             buyer_id = delivery['user_id']
             status = delivery['status']
             store_id = delivery['store_id']
             total_price = delivery['total_price']
-            order_time = delivery['order_time']
 
             if buyer_id != user_id:
                 return error.error_authorization_fail()
@@ -305,3 +314,40 @@ class Buyer(db_conn.DBConn):
         except BaseException as e:
             return 530, "{}".format(str(e))
         return 200, "delivery confirmed"
+
+    def auto_cancel_orders(self, order_id, user_id): 
+        if not self.user_id_exist(user_id):
+            return error.error_non_exist_user_id(user_id)
+        if not self.order_id_exist(order_id):
+            return error.error_invalid_order_id(order_id)
+        cur_time = int(datetime.now().timestamp())
+        time_diff = cur_time - unpaid_orders[order_id]
+        if time_diff > self.time_limit:
+            try:
+                unpaid_orders.pop(order_id)
+                store_id = self.db['order_detail'].find({'order_id': order_id},
+                                                        {'_id': 0, 'store_id': 1})
+                result_cursor = self.db['new_order_detail'].find({'order_id': order_id},
+                                                          {'_id': 0, 'book_id': 1, 'count': 1})
+                result_list = list(result_cursor)
+                if not list(result_list):
+                    return error.error_invalid_order_id(order_id)
+                for row in result_list:
+                    book_id = row['book_id']
+                    count = row['count']
+                    self.db['store'].update_one({'store_id': store_id,
+                                                 'book_id': book_id},
+                                                {'$inc': {'stock_level': count}})
+                    cursor = self.db['history_order'].update_one({'order_id': order_id}, {'$set': {'status': 0}})
+                    if cursor.modified_count == 0:
+                        return error.error_invalid_order_id(order_id)
+
+                    self.db['new_order'].delete_one({'order_id': order_id})
+
+                    self.db['new_order_detail'].delete_many({'order_id': order_id})
+            except PyMongoError as e:
+                return 529, "{}".format(str(e))
+            except BaseException as e:
+                return 530, "{}".format(str(e))
+            return error.error_order_timelimit_exceeded(order_id)
+        return 200, "auto cancel"
