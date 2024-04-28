@@ -34,8 +34,8 @@ class Seller(db_conn.DBConn):
             book_json.pop('price')
 
             inverted_index_col = self.db['inverted_index']
-            cursor = inverted_index_col.find({'book_id': book_id})
-            if not list(cursor):
+            cursor = inverted_index_col.find_one({'book_id': book_id})
+            if not cursor:
                 country, author = '', ''
                 if 'author' in book_json.keys():
                     author = book_json.get('author')
