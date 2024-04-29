@@ -43,13 +43,13 @@ class Seller(db_conn.DBConn):
                 tags = []
                 if 'tags' in book_json.keys():
                     tags = book_json.get('tags')
-                if 'author_intro' in book_json.keys():
-                    tags += get_keywords(book_json.get('author_intro'))
-                if 'book_intro' in book_json.keys():
-                    tags += get_keywords(book_json.get('book_intro'))
-                if 'content' in book_json.keys():
-                    tags += get_keywords(book_json.get('content'))
-                tags = list(set(tags))
+                # if 'author_intro' in book_json.keys():
+                #     tags += get_keywords(book_json.get('author_intro'))
+                # if 'book_intro' in book_json.keys():
+                #     tags += get_keywords(book_json.get('book_intro'))
+                # if 'content' in book_json.keys():
+                #     tags += get_keywords(book_json.get('content'))
+                # tags = list(set(tags))
 
                 prefixes = []
                 title = book_json.get('title')
