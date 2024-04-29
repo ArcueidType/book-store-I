@@ -149,6 +149,7 @@ class Buyer(db_conn.DBConn):
             if password != row['password']:
                 return error.error_authorization_fail()
 
+            """         
             user_store_col = self.db['user_store']
             row = user_store_col.find({'store_id':  store_id}, {'_id':  0, 'store_id':  1, 'user_id':  1})
 
@@ -160,7 +161,8 @@ class Buyer(db_conn.DBConn):
             seller_id = row['user_id']
 
             if not self.user_id_exist(seller_id):
-                return error.error_non_exist_user_id(seller_id)
+                return error.error_non_exist_user_id(seller_id) 
+            """
 
             if balance < total_price:
                 return error.error_not_sufficient_funds(order_id)
@@ -221,7 +223,8 @@ class Buyer(db_conn.DBConn):
                 return error.error_non_exist_user_id(user_id)
             if not self.order_id_exist(order_id):
                 return error.error_invalid_order_id(order_id)
-
+            
+            unpaid_orders.pop(order_id)
             row = self.db['new_order'].find({'order_id': order_id}, {'_id': 0})
             row = list(row)
             if not row:
@@ -230,7 +233,6 @@ class Buyer(db_conn.DBConn):
             order_id = row['order_id']
             buyer_id = row['user_id']
             store_id = row['store_id']
-            total_price = row['total_price']
             status = row['status']
 
             if buyer_id != user_id:
@@ -238,17 +240,17 @@ class Buyer(db_conn.DBConn):
             if status != 2:
                 return error.error_invalid_order_status(order_id)
 
-            result = self.db['user_store'].find({'store_id': store_id}, {'_id': 0})
-            result = list(result)
-            if not result:
-                return error.error_non_exist_store_id(store_id)
-            result = result[0]
-            seller_id = result['user_id']
-            if not self.user_id_exist(seller_id):
-                return error.error_non_exist_user_id(seller_id)
+            #result = self.db['user_store'].find({'store_id': store_id}, {'_id': 0})
+            #result = list(result)
+            #if not result:
+                #return error.error_non_exist_store_id(store_id)
+            #result = result[0]
+            #seller_id = result['user_id']
+            #if not self.user_id_exist(seller_id):
+                #return error.error_non_exist_user_id(seller_id)
 
-            self.db['users'].update_one({'user_id': user_id}, {'$inc': {"balance": total_price}})
-            self.db['users'].update_one({'user_id': seller_id}, {'$inc': {"balance": -total_price}})
+            #self.db['users'].update_one({'user_id': user_id}, {'$inc': {"balance": total_price}})
+            #self.db['users'].update_one({'user_id': seller_id}, {'$inc': {"balance": -total_price}})
             self.db['history_order'].update_one({'order_id': order_id}, {'$set': {'status': 0}})
 
             result_cursor = self.db['new_order_detail'].find({'order_id': order_id}, {'_id': 0, 'book_id': 1, 'count': 1})
