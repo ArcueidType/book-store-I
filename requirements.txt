@@ -8,3 +8,9 @@ pytest
 PyJWT
 requests
 pymongo
+
+jieba
+apscheduler
+numpy
+setuptools
+pandas
