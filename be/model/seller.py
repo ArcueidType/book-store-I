@@ -33,6 +33,7 @@ class Seller(db_conn.DBConn):
             price = book_json.get('price')
             book_json.pop('price')
 
+
             inverted_index_col = self.db['inverted_index']
             cursor = inverted_index_col.find_one({'book_id': book_id})
             if not cursor:
@@ -82,6 +83,7 @@ class Seller(db_conn.DBConn):
                                                    'book_title': title,
                                                    'book_author': author})
 
+        
             store_col = self.db['store']
             store_col.insert_one({'store_id': store_id, 'book_id': book_id, 'price': price,
                                   'stock_level': stock_level})

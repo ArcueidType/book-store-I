@@ -59,6 +59,15 @@ def manual_cancel_orders():
     code, message = b.manual_cancel_orders(order_id=order_id, user_id=user_id)
     return jsonify({"message": message}), code
 
+@bp_buyer.route("/auto_cancel_orders", methods=["POST"])
+def auto_cancel_orders():
+    order_id: str = request.json.get("order_id")
+    user_id: str = request.json.get("user_id")
+    b = Buyer()
+    code, message = b.auto_cancel_orders(order_id=order_id, user_id=user_id)
+    return jsonify({"message": message}), code
+
+
 
 @bp_buyer.route('/search', methods=['POST'])
 def search():

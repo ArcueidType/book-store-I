@@ -50,7 +50,7 @@ def be_run(auto_cancel=False):
 
     if auto_cancel == True:
         scheduler = BlockingScheduler()
-        scheduler.add_job('__main__:auto_cancel_orders', 'interval', seconds=30)
+        scheduler.add_job('__main__:auto_cancel_orders', 'interval', seconds=300)
         print("Settings: Auto Cancel Out Of Time Orders")
         scheduler.start() 
     app.run()

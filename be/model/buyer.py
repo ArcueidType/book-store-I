@@ -4,6 +4,7 @@ import logging
 from be.model import db_conn
 from be.model import error
 from datetime import datetime
+import traceback
 
 unpaid_orders = {}
 
@@ -11,7 +12,7 @@ unpaid_orders = {}
 class Buyer(db_conn.DBConn):
     def __init__(self):
         db_conn.DBConn.__init__(self)
-        self.time_limit = 300
+        self.time_limit = 30
         self.page_size = 25
 
     def new_order(
@@ -330,7 +331,7 @@ class Buyer(db_conn.DBConn):
         if time_diff > self.time_limit:
             try:
                 unpaid_orders.pop(order_id)
-                store_id = self.db['order_detail'].find({'order_id': order_id},
+                store_id = self.db['order_detail'].find_one({'order_id': order_id},
                                                         {'_id': 0, 'store_id': 1})
                 result_cursor = self.db['new_order_detail'].find({'order_id': order_id},
                                                           {'_id': 0, 'book_id': 1, 'count': 1})
@@ -338,6 +339,7 @@ class Buyer(db_conn.DBConn):
                 if not list(result_list):
                     return error.error_invalid_order_id(order_id)
                 for row in result_list:
+                    #row = row[0]
                     book_id = row['book_id']
                     count = row['count']
                     self.db['store'].update_one({'store_id': store_id,
@@ -350,12 +352,16 @@ class Buyer(db_conn.DBConn):
                     self.db['new_order'].delete_one({'order_id': order_id})
 
                     self.db['new_order_detail'].delete_many({'order_id': order_id})
+                    return 200, "auto_cancel"
             except PyMongoError as e:
                 return 529, "{}".format(str(e))
             except BaseException as e:
                 return 530, "{}".format(str(e))
-            return error.error_order_timelimit_exceeded(order_id)
-        return 200, "auto cancel"
+                #return 530, traceback.format_exc()
+            #return error.error_order_timelimit_exceeded(order_id)   
+        else:
+            return 531, "not_timeout"
+
 
     def search(self, search_key, page=0) -> (int, str, list):
         try:
