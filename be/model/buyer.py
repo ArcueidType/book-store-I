@@ -234,6 +234,7 @@ class Buyer(db_conn.DBConn):
             buyer_id = row['user_id']
             store_id = row['store_id']
             status = row['status']
+            total_price = row['total_price']
 
             if buyer_id != user_id:
                 return error.error_authorization_fail
@@ -249,7 +250,7 @@ class Buyer(db_conn.DBConn):
             #if not self.user_id_exist(seller_id):
                 #return error.error_non_exist_user_id(seller_id)
 
-            #self.db['users'].update_one({'user_id': user_id}, {'$inc': {"balance": total_price}})
+            self.db['users'].update_one({'user_id': user_id}, {'$inc': {"balance": total_price}})
             #self.db['users'].update_one({'user_id': seller_id}, {'$inc': {"balance": -total_price}})
             self.db['history_order'].update_one({'order_id': order_id}, {'$set': {'status': 0}})
 
