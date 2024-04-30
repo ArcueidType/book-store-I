@@ -5,10 +5,11 @@
     </center>
 </h1>
 
+
 | Team Member | Student ID  |                       Responsibilities                       | Proportion |
 | :---------: | :---------: | :----------------------------------------------------------: | :--------: |
 | **韩晨旭**  | 10225101440 | Schema 设计、倒排表、基础功能实现、单/多关键词搜索、店内搜索 |   33.4%    |
-|  **谷杰**   | 10222140408 |                 手动/自动取消订单、接口测试                  |   33.3%    |
+|  **谷杰**   | 10222140408 |          手动/自动取消订单、查询历史订单、接口测试           |   33.3%    |
 | **朱维清**  | 10215300402 |                推荐系统、收货、发货、接口测试                |   33.3%    |
 
 <span style="color:darkorange;">项目仓库：https://github.com/ArcueidType/book-store-I</span>
@@ -343,7 +344,7 @@
 >   $$
 >   W_{\mu\nu} = \frac{\displaystyle\sum_{i\in N(\mu) \cap N(\nu)} \frac{1}{\log(1+|N(i)|)}}{\sqrt{|N(\mu)||N(\nu)|}}
 >   $$
->   
+>
 > + **归一化处理：**
 >
 > $$
@@ -432,6 +433,7 @@
      ```
 
   7. 对相似度矩阵 `tagSimMatrix` 进行**归一化**：
+
      ```python
      for tag, related_degrees in tag_sim_matrix.items():
          max_degree = max(related_degrees.values())
@@ -439,6 +441,7 @@
      ```
 
   8. 寻找相似度最高的 10 个 `tag` ：
+
      ```python
      recommend_tags = dict()
      target_user_tags = users_tags[user_id]
@@ -453,6 +456,7 @@
      ```
 
   9. 通过之前记录的 `all_books_tags` 字典中每本书的 `tags` 与筛选出的高相似度 `recommend_tags` 做交集，若有交集，则**求和交集部分的 `tags` 的相似度**，并把相似度 `sim_value` 记录在`recommends`里，由此得到至多 10 本筛选出的推荐书籍：
+
      ```python
      recommends = []
      key_tags = set(recommend_tags.keys())
@@ -508,7 +512,7 @@
 
 * **测试样例**
 
-   `user_id` , `book_id` 和 `store_id` 不存在的情况；库存不够的情况。
+  `user_id` , `book_id` 和 `store_id` 不存在的情况；库存不够的情况。
 
 ---
 
